@@ -8,25 +8,23 @@ import kotlin.test.assertEquals
 class ParserTest {
     @Test
     internal fun `simple test`() {
-        val res = Parser("1").parse()
-        val expected = Program(
-            listOf(
-                Function(
-                    proto = FunctionProto(
-                        name = "__anon_expr",
-                        args = emptyList()
-                    ),
-                    body = NumberExpr(1)
-                )
-            )
+        val res = Parser("1").parseSequence().toList()
+        val expected = listOf(
+            Function(
+                proto = FunctionProto(
+                    name = "__anon_expr",
+                    args = emptyList()
+                ),
+                body = NumberExpr(1)
+            ) to Parser.Type.TOP_LEVEL
         )
         assertEquals(expected, res)
     }
 
     @Test
     internal fun `simple test with optimization`() {
-        val res = Parser("1 + 5").parse()
-        val expected = Program(
+        val res = Parser("1 + 5").parseSequence().toList()
+        val expected =
             listOf(
                 Function(
                     proto = FunctionProto(
@@ -38,16 +36,15 @@ class ParserTest {
                         left = NumberExpr(1),
                         right = NumberExpr(5)
                     )
-                )
+                ) to Parser.Type.TOP_LEVEL
             )
-        )
         assertEquals(expected, res)
     }
 
     @Test
     internal fun `expression with parentheses`() {
-        val res = Parser("4 * (2 + 3)").parse()
-        val expected = Program(
+        val res = Parser("4 * (2 + 3)").parseSequence().toList()
+        val expected =
             listOf(
                 Function(
                     proto = FunctionProto(
@@ -63,17 +60,16 @@ class ParserTest {
                             right = NumberExpr(3)
                         )
                     )
-                )
+                ) to Parser.Type.TOP_LEVEL
             )
-        )
         assertEquals(expected, res)
     }
 
 
     @Test
     internal fun `named function`() {
-        val res = Parser("def myFun(x) x + 15").parse()
-        val expected = Program(
+        val res = Parser("def myFun(x) x + 15").parseSequence().toList()
+        val expected =
             listOf(
                 Function(
                     proto = FunctionProto(
@@ -85,9 +81,8 @@ class ParserTest {
                         left = VarExpr("x"),
                         right = NumberExpr(15)
                     )
-                )
+                ) to Parser.Type.DEFINITION
             )
-        )
         assertEquals(expected, res)
     }
 }

@@ -5,12 +5,6 @@ import llvm.*
  * @author Alex Plate
  */
 
-data class Program(private val functions: List<Llvm>) {
-    fun codegen(data: LlvmData) {
-        functions.forEach { it.codegen(data) }
-    }
-}
-
 interface Llvm {
     fun codegen(data: LlvmData): LLVMValueRef?
 }
@@ -21,7 +15,7 @@ data class NumberExpr(val value: Int) : ASTBase() {
     @ExperimentalUnsignedTypes
     override fun codegen(data: LlvmData): LLVMValueRef? {
         Logger.debug("Generate int - $value")
-        return LLVMConstInt(LLVMInt64TypeInContext(data.context), value.toULong(), 1)
+        return LLVMConstInt(LLVMInt64TypeInContext(context), value.toULong(), 1)
     }
 }
 
@@ -51,7 +45,8 @@ data class BinaryExpr(val operator: Char, val left: ASTBase, val right: ASTBase)
 data class CallExpr(val name: String, val args: List<ASTBase>) : ASTBase() {
     @ExperimentalUnsignedTypes
     override fun codegen(data: LlvmData): LLVMValueRef? {
-        val function = LLVMGetNamedFunction(data.module, name) ?: error("Function is not found")
+        Logger.debug("Generate call to function")
+        val function = getFunction(name, data) ?: error("Function is not found")
 
         if (llvm.LLVMCountParams(function).toInt() != args.size) error("Wrong # of params")
 
@@ -64,8 +59,8 @@ data class FunctionProto(val name: String, val args: List<String>) : Llvm {
     @ExperimentalUnsignedTypes
     override fun codegen(data: LlvmData): LLVMValueRef? {
         Logger.debug("Generate function proto")
-        val arguments = List(args.size) { LLVMInt64TypeInContext(data.context) }.toCValues()
-        val functionType = LLVMFunctionType(LLVMInt64TypeInContext(data.context), arguments, args.size.toUInt(), 0)
+        val arguments = List(args.size) { LLVMInt64TypeInContext(context) }.toCValues()
+        val functionType = LLVMFunctionType(LLVMInt64TypeInContext(context), arguments, args.size.toUInt(), 0)
         val function = LLVMAddFunction(data.module, name, functionType)
 
         memScoped {
@@ -83,9 +78,10 @@ data class Function(val proto: FunctionProto, val body: ASTBase) : Llvm {
     @ExperimentalUnsignedTypes
     override fun codegen(data: LlvmData): LLVMValueRef? {
         Logger.debug("Generate function")
-        val function = LLVMGetNamedFunction(data.module, proto.name) ?: proto.codegen(data)
+        functionProtos[proto.name] = proto
+        val function = getFunction(proto.name, data) ?: proto.codegen(data)
 
-        val basicBlock = LLVMAppendBasicBlockInContext(data.context, function, "entry")
+        val basicBlock = LLVMAppendBasicBlockInContext(context, function, "entry")
         LLVMPositionBuilderAtEnd(data.builder, basicBlock)
 
         data.namedValues.clear()
@@ -107,6 +103,9 @@ data class Function(val proto: FunctionProto, val body: ASTBase) : Llvm {
         return if (retVal != null) {
             LLVMBuildRet(data.builder, retVal)
             LLVMVerifyFunction(function, LLVMVerifierFailureAction.LLVMPrintMessageAction)
+            if (data.optimization) {
+                LLVMRunFunctionPassManager(data.fpm, function)
+            }
             function
         } else {
             LLVMDeleteFunction(function)

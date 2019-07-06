@@ -6,6 +6,7 @@ val binopPrecedence = mapOf(
     '*' to 40
 )
 
+@ExperimentalUnsignedTypes
 class Parser(input: String) {
     private val lexer = Lexer(input)
     private val currPrecedence: Int
@@ -131,22 +132,6 @@ class Parser(input: String) {
             '(' -> parseParenExpr()
             else -> error("Unexpected token ${if (lexer.currentToken.toInt() <= 0) lexer.currentToken.toInt() else lexer.currentToken}")
         }
-    }
-
-    @ExperimentalUnsignedTypes
-    fun parse(): Program {
-        lexer.next()
-        val res = mutableListOf<Llvm>()
-        infLoop@ while (true) {
-            when (lexer.currentToken) {
-                Lexer.eof -> break@infLoop
-                ';' -> lexer.next()
-                Lexer.def -> res += parseDefinition()
-                Lexer.extern -> res += parseExtern()
-                else -> res += parseTopLevel()
-            }
-        }
-        return Program(res)
     }
 
     fun parseSequence() = sequence {

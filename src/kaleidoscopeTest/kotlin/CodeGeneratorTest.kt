@@ -14,16 +14,13 @@ class CodeGeneratorTest {
         val data = LlvmData(false)
         CodeGenerator(data).generate("1 + 2")
         val expected = """
-           ; ModuleID = 'Kaleidoscope-kotlin'
-           source_filename = "Kaleidoscope-kotlin"
-
            define i64 @__anon_expr() {
            entry:
              ret i64 3
            }
            
         """.trimIndent()
-        assertEquals(expected, LLVMPrintModuleToString(data.module)?.toKString())
+        assertEquals(expected, getString(data))
     }
 
     @Test
@@ -31,16 +28,13 @@ class CodeGeneratorTest {
         val data = LlvmData(false)
         CodeGenerator(data).generate("4 * (2 + 3)")
         val expected = """
-           ; ModuleID = 'Kaleidoscope-kotlin'
-           source_filename = "Kaleidoscope-kotlin"
-
            define i64 @__anon_expr() {
            entry:
              ret i64 20
            }
            
         """.trimIndent()
-        assertEquals(expected, LLVMPrintModuleToString(data.module)?.toKString())
+        assertEquals(expected, getString(data))
     }
 
     @Test
@@ -48,9 +42,6 @@ class CodeGeneratorTest {
         val data = LlvmData(false)
         CodeGenerator(data).generate("def myFunction(x) x + 1")
         val expected = """
-           ; ModuleID = 'Kaleidoscope-kotlin'
-           source_filename = "Kaleidoscope-kotlin"
-
            define i64 @myFunction(i64 %x) {
            entry:
              %addtmp = add i64 %x, 1
@@ -58,7 +49,7 @@ class CodeGeneratorTest {
            }
            
         """.trimIndent()
-        assertEquals(expected, LLVMPrintModuleToString(data.module)?.toKString())
+        assertEquals(expected, getString(data))
     }
 
     @Test
@@ -66,9 +57,6 @@ class CodeGeneratorTest {
         val data = LlvmData(false)
         CodeGenerator(data).generate("def test(x) (1+2+x)*(x+(1+2))")
         val expected = """
-           ; ModuleID = 'Kaleidoscope-kotlin'
-           source_filename = "Kaleidoscope-kotlin"
-
            define i64 @test(i64 %x) {
            entry:
              %addtmp = add i64 3, %x
@@ -78,6 +66,27 @@ class CodeGeneratorTest {
            }
            
         """.trimIndent()
-        assertEquals(expected, LLVMPrintModuleToString(data.module)?.toKString())
+        assertEquals(expected, getString(data))
+    }
+
+    @Test
+    internal fun `function with optimizations`() {
+        val data = LlvmData(true)
+        CodeGenerator(data).generate("def test(x) (1+2+x)*(x+(1+2))")
+        val expected = """
+           define i64 @test(i64 %x) {
+           entry:
+             %addtmp = add i64 %x, 3
+             %multmp = mul i64 %addtmp, %addtmp
+             ret i64 %multmp
+           }
+           
+        """.trimIndent()
+        assertEquals(expected, getString(data))
+    }
+
+    private fun getString(data: LlvmData): String? {
+        val str = LLVMPrintModuleToString(data.module)?.toKString() ?: ""
+        return str.substring(str.indexOf("\n\n") + 2)
     }
 }
