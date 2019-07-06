@@ -1,0 +1,18 @@
+headers = llvm-c/Core.h \
+          llvm-c/ExecutionEngine.h \
+          llvm-c/Analysis.h \
+          llvm-c/Transforms/Scalar.h
+headerFilter = llvm-c/**
+
+compilerOpts = -I/usr/local/opt/llvm/include
+linkerOpts = -L/usr/local/opt/llvm/lib -lLLVMCore \
+    -lLLVMBinaryFormat -lLLVMSupport -lLLVMDemangle -lLLVMX86Disassembler -lLLVMX86AsmParser -lLLVMX86CodeGen \
+    -lLLVMGlobalISel -lLLVMSelectionDAG -lLLVMAsmPrinter -lLLVMX86Desc -lLLVMMCDisassembler -lLLVMX86Info \
+    -lLLVMX86AsmPrinter -lLLVMX86Utils -lLLVMInterpreter -lLLVMCodeGen -lLLVMScalarOpts -lLLVMInstCombine \
+    -lLLVMAggressiveInstCombine -lLLVMTransformUtils -lLLVMBitWriter -lLLVMExecutionEngine -lLLVMTarget \
+    -lLLVMAnalysis -lLLVMProfileData -lLLVMRuntimeDyld -lLLVMObject -lLLVMMCParser -lLLVMBitReader -lLLVMMC \
+    -lLLVMDebugInfoCodeView -lLLVMDebugInfoMSF -lLLVMCore -lLLVMBinaryFormat -lLLVMSupport -lLLVMDemangle \
+    -lLLVMMCJIT -lLLVMExecutionEngine -lLLVMTarget -lLLVMAnalysis -lLLVMProfileData -lLLVMRuntimeDyld \
+    -lLLVMObject -lLLVMMCParser -lLLVMBitReader -lLLVMMC -lLLVMDebugInfoCodeView -lLLVMDebugInfoMSF -lLLVMCore \
+    -lLLVMBinaryFormat -lLLVMSupport -lLLVMDemangle \
+    -lz -lcurses -lm -lxml2
