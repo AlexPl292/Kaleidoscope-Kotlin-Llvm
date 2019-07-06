@@ -13,6 +13,13 @@ class Lexer(private val input: String) {
         // Primary
         val identifier = (-4).toChar()
         val number = (-5).toChar()
+
+        // Control flow
+        val if_token = (-6).toChar()
+        val then_token = (-7).toChar()
+        val else_token = (-8).toChar()
+        val for_token = (-9).toChar()
+        val in_token = (-10).toChar()
     }
 
     private var pointer = -1
@@ -46,6 +53,11 @@ class Lexer(private val input: String) {
             return when (val identifierStr = identifierBuilder.toString()) {
                 "def" -> def
                 "extern" -> extern
+                "if" -> if_token
+                "then" -> then_token
+                "else" -> else_token
+                "for" -> for_token
+                "in" -> in_token
                 else -> {
                     tokenIdnt = identifierStr
                     identifier

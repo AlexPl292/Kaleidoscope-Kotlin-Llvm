@@ -1,4 +1,9 @@
 import Lexer.Companion.def
+import Lexer.Companion.else_token
+import Lexer.Companion.for_token
+import Lexer.Companion.if_token
+import Lexer.Companion.in_token
+import Lexer.Companion.then_token
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -52,6 +57,24 @@ class LexerTest {
     internal fun functionWithBody() {
         val expected = tokens(def, "myFun", "(", "x", ")", "x", "+", "1", "+", "3")
         val res = parse("def myFun(x) x + 1 + 3")
+        assertEquals(expected, res)
+    }
+
+    @Test
+    internal fun ifCondition() {
+        val expected =
+            tokens(def, "myFun", "(", "x", "y", ")", if_token, "x", ">", "y", then_token, "x", else_token, "y")
+        val res = parse("def myFun(x y) if x > y then x else y")
+        assertEquals(expected, res)
+    }
+
+    @Test
+    internal fun forLoop() {
+        val expected = tokens(
+            def, "myFun", "(", "x", "y", ")", for_token, "i", "=", "1", ",", "i", "<", "x", ",", "2", in_token,
+            "y", "+", "y"
+        )
+        val res = parse("def myFun(x y) for i = 1, i < x, 2 in y + y")
         assertEquals(expected, res)
     }
 

@@ -85,8 +85,80 @@ class CodeGeneratorTest {
         assertEquals(expected, getString(data))
     }
 
+    @Test
+    internal fun `if condition`() {
+        val data = LlvmData(true)
+        CodeGenerator(data).generate(
+            """
+                extern foo();
+                extern bar();
+                def baz(x) if x then foo() else bar();
+                """.trimIndent()
+        )
+        val expected = """
+           declare i64 @foo()
+
+           declare i64 @bar()
+
+           define i64 @baz(i64 %x) {
+           entry:
+             %ifcond = icmp eq i64 %x, 0
+             br i1 %ifcond, label %else, label %then
+
+           then:                                             ; preds = %entry
+             %calltmp = call i64 @foo()
+             br label %ifcont
+
+           else:                                             ; preds = %entry
+             %calltmp1 = call i64 @bar()
+             br label %ifcont
+
+           ifcont:                                           ; preds = %else, %then
+             %iftmp = phi i64 [ %calltmp, %then ], [ %calltmp1, %else ]
+             ret i64 %iftmp
+           }
+
+        """.trimIndent()
+        assertEquals(expected, getString(data))
+    }
+
+    @Test
+    internal fun `for loop`() {
+        val data = LlvmData(false)
+        CodeGenerator(data).generate(
+            """
+            extern putchard(char);
+            def printstar(n)
+              for i = 1, i < n, 1 in
+                putchard(42);
+            """.trimIndent()
+        )
+        val expected = """
+           declare i64 @putchard(i64)
+
+           define i64 @printstar(i64 %n) {
+           entry:
+             br label %loop
+
+           loop:                                             ; preds = %loop, %entry
+             %i = phi i64 [ 1, %entry ], [ %nextvar, %loop ]
+             %calltmp = call i64 @putchard(i64 42)
+             %nextvar = add i64 %i, 1
+             %ltcode = icmp slt i64 %i, %n
+             %loopcond = icmp ne i1 %ltcode, i64 0
+             br i1 %loopcond, label %loop, label %afterloop
+
+           afterloop:                                        ; preds = %loop
+             ret i64 0
+           }
+
+        """.trimIndent()
+        assertEquals(expected, getString(data))
+    }
+
     private fun getString(data: LlvmData): String? {
         val str = LLVMPrintModuleToString(data.module)?.toKString() ?: ""
         return str.substring(str.indexOf("\n\n") + 2)
     }
+
 }

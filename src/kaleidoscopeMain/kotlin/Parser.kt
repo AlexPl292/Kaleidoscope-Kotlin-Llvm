@@ -124,11 +124,59 @@ class Parser(input: String) {
         return Function(proto, expression)
     }
 
+    private fun parseIf(): ASTBase {
+        lexer.next()
+        val condition = parseExpression()
+
+        if (lexer.currentToken != Lexer.then_token) error("Then expected")
+
+        lexer.next()
+        val then = parseExpression()
+
+        if (lexer.currentToken != Lexer.else_token) error("Else expected")
+
+        lexer.next()
+        val elseCode = parseExpression()
+        return IfExprAst(condition, then, elseCode)
+    }
+
+    private fun parseFor(): ASTBase {
+        lexer.next()
+
+        if (lexer.currentToken != Lexer.identifier) error("Identifier expected. Got ${lexer.currentToken}")
+
+        val identifier = lexer.tokenIdnt
+        lexer.next()
+
+        if (lexer.currentToken != '=') error("= expected. Got ${lexer.currentToken}")
+        lexer.next()
+
+        val start = parseExpression()
+        if (lexer.currentToken != ',') error(", expected. Got ${lexer.currentToken}")
+        lexer.next()
+
+        val end = parseExpression()
+
+        val step = if (lexer.currentToken == ',') {
+            lexer.next()
+            parseExpression()
+        } else null
+
+        if (lexer.currentToken != Lexer.in_token) error("in token expected. Got ${lexer.currentToken}")
+        lexer.next()
+
+        val body = parseExpression()
+
+        return ForExprAst(identifier, start, end, step, body)
+    }
+
     private fun parsePrimary(): ASTBase {
         Logger.debug("Parsing primary expression")
         return when (lexer.currentToken) {
             Lexer.identifier -> parseIdentifier()
             Lexer.number -> parseNumber()
+            Lexer.if_token -> parseIf()
+            Lexer.for_token -> parseFor()
             '(' -> parseParenExpr()
             else -> error("Unexpected token ${if (lexer.currentToken.toInt() <= 0) lexer.currentToken.toInt() else lexer.currentToken}")
         }

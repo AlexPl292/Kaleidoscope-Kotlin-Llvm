@@ -85,4 +85,57 @@ class ParserTest {
             )
         assertEquals(expected, res)
     }
+
+    @Test
+    internal fun `if condition`() {
+        val res = Parser("def myFun(x y) if x > y then x else y").parseSequence().toList()
+        val expected = listOf(
+            Function(
+                proto = FunctionProto(
+                    name = "myFun",
+                    args = listOf("x", "y")
+                ),
+                body = IfExprAst(
+                    cond = BinaryExpr(
+                        operator = '>',
+                        left = VarExpr("x"),
+                        right = VarExpr("y")
+                    ),
+                    then = VarExpr("x"),
+                    elseCode = VarExpr("y")
+                )
+            ) to Parser.Type.DEFINITION
+        )
+        assertEquals(expected, res)
+    }
+
+    @Test
+    internal fun `for loop`() {
+        val res = Parser("def myFun(x y) for i = 1, i < x, 2 in y + y").parseSequence().toList()
+        val expected =
+            listOf(
+                Function(
+                    proto = FunctionProto(
+                        name = "myFun",
+                        args = listOf("x", "y")
+                    ),
+                    body = ForExprAst(
+                        varName = "i",
+                        start = NumberExpr(1),
+                        end = BinaryExpr(
+                            operator = '<',
+                            left = VarExpr("i"),
+                            right = VarExpr("x")
+                        ),
+                        step = NumberExpr(2),
+                        body = BinaryExpr(
+                            operator = '+',
+                            left = VarExpr("y"),
+                            right = VarExpr("y")
+                        )
+                    )
+                ) to Parser.Type.DEFINITION
+            )
+        assertEquals(expected, res)
+    }
 }

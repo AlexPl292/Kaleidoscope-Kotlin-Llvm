@@ -59,7 +59,8 @@ data class FunctionProto(val name: String, val args: List<String>) : Llvm {
     @ExperimentalUnsignedTypes
     override fun codegen(data: LlvmData): LLVMValueRef? {
         Logger.debug("Generate function proto")
-        val arguments = List(args.size) { LLVMInt64TypeInContext(context) }.toCValues()
+        val argList = List(args.size) { LLVMInt64TypeInContext(context) }
+        val arguments = argList.toCValues()
         val functionType = LLVMFunctionType(LLVMInt64TypeInContext(context), arguments, args.size.toUInt(), 0)
         val function = LLVMAddFunction(data.module, name, functionType)
 
@@ -111,5 +112,113 @@ data class Function(val proto: FunctionProto, val body: ASTBase) : Llvm {
             LLVMDeleteFunction(function)
             null
         }
+    }
+}
+
+data class IfExprAst(val cond: ASTBase, val then: ASTBase, val elseCode: ASTBase) : ASTBase() {
+    @ExperimentalUnsignedTypes
+    override fun codegen(data: LlvmData): LLVMValueRef? {
+        val condition = cond.codegen(data)
+        val condRes = LLVMBuildICmp(
+            data.builder,
+            LLVMIntNE,
+            condition,
+            LLVMConstInt(LLVMInt64TypeInContext(context), 0u, 1),
+            "ifcond"
+        )
+
+        val function = LLVMGetBasicBlockParent(LLVMGetInsertBlock(data.builder))
+        var thenBb = LLVMAppendBasicBlockInContext(context, function, "then")
+        var elseBb = LLVMAppendBasicBlockInContext(context, function, "else")
+        val mergeBb = LLVMAppendBasicBlockInContext(context, function, "ifcont")
+        LLVMBuildCondBr(data.builder, condRes, thenBb, elseBb)
+
+        // Create then branch
+        LLVMPositionBuilderAtEnd(data.builder, thenBb)
+        val thenV = then.codegen(data)
+        LLVMBuildBr(data.builder, mergeBb)
+
+        thenBb = LLVMGetInsertBlock(data.builder)
+
+        // Create else branch
+        LLVMPositionBuilderAtEnd(data.builder, elseBb)
+        val elseV = elseCode.codegen(data)
+        LLVMBuildBr(data.builder, mergeBb)
+
+        elseBb = LLVMGetInsertBlock(data.builder)
+
+        // Create merge
+        LLVMPositionBuilderAtEnd(data.builder, mergeBb)
+        val phi = LLVMBuildPhi(data.builder, LLVMInt64TypeInContext(context), "iftmp")
+
+        val incomingValues = listOf(thenV, elseV).toCValues()
+        val incomingBlocks = listOf(thenBb, elseBb).toCValues()
+
+        LLVMAddIncoming(phi, incomingValues, incomingBlocks, 2u)
+        return phi
+    }
+}
+
+data class ForExprAst(
+    val varName: String,
+    val start: ASTBase,
+    val end: ASTBase,
+    val step: ASTBase?,
+    val body: ASTBase
+) : ASTBase() {
+    @ExperimentalUnsignedTypes
+    override fun codegen(data: LlvmData): LLVMValueRef? {
+        val startVal = start.codegen(data)
+
+        val function = LLVMGetBasicBlockParent(LLVMGetInsertBlock(data.builder))
+        val preheaderBb = LLVMGetInsertBlock(data.builder)
+        val loopBb = LLVMAppendBasicBlockInContext(context, function, "loop")
+        LLVMBuildBr(data.builder, loopBb)
+
+        // Create loop
+        LLVMPositionBuilderAtEnd(data.builder, loopBb)
+        val phi = LLVMBuildPhi(data.builder, LLVMInt64TypeInContext(context), varName)
+        LLVMAddIncoming(phi, listOf(startVal).toCValues(), listOf(preheaderBb).toCValues(), 1u)
+
+        // Within the loop, the variable is defined equal to the PHI node.  If it
+        // shadows an existing variable, we have to restore it, so save it now.
+        val oldVar = data.namedValues[varName]
+        data.namedValues[varName] = phi
+
+        // Generate body
+        body.codegen(data)
+
+        // Emit the step value.
+        val step = if (step != null) step.codegen(data) else LLVMConstInt(LLVMInt64TypeInContext(context), 1U, 1)
+        val nextVar = LLVMBuildAdd(data.builder, phi, step, "nextvar")
+
+        // End condition
+        val end = end.codegen(data)
+        val endCondition = LLVMBuildICmp(
+            data.builder,
+            LLVMIntNE,
+            end,
+            LLVMConstInt(LLVMInt64TypeInContext(context), 0u, 1),
+            "loopcond"
+        )
+
+        // Create the "after loop" block and insert it.
+        val loopEndBb = LLVMGetInsertBlock(data.builder)
+        val afterBb = LLVMAppendBasicBlockInContext(context, function, "afterloop")
+
+        // Insert the conditional branch into the end of LoopEndBB.
+        LLVMBuildCondBr(data.builder, endCondition, loopBb, afterBb)
+
+        // Any new code will be inserted in AfterBB.
+        LLVMPositionBuilderAtEnd(data.builder, afterBb)
+
+        // Add a new entry to the PHI node for the backedge.
+        LLVMAddIncoming(phi, listOf(nextVar).toCValues(), listOf(loopEndBb).toCValues(), 1u)
+
+        // Restore the unshadowed variable.
+        if (oldVar != null) data.namedValues[varName] = oldVar else data.namedValues.remove(varName)
+
+        // for expr always returns 0.0.
+        return LLVMConstNull(LLVMInt64TypeInContext(context))
     }
 }
