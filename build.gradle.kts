@@ -1,5 +1,5 @@
 plugins {
-    kotlin("multiplatform") version "1.3.31"
+    kotlin("multiplatform") version "1.3.41"
 }
 
 group = "ru.alexpl"
@@ -27,7 +27,9 @@ kotlin {
         val llvm by main.cinterops.creating
 
         binaries {
-            executable()
+            executable {
+                runTask?.standardInput = System.`in`
+            }
         }
     }
 }

@@ -13,7 +13,7 @@ class ParserTest {
             listOf(
                 Function(
                     proto = FunctionProto(
-                        name = "",
+                        name = "__anon_expr",
                         args = emptyList()
                     ),
                     body = NumberExpr(1)
@@ -30,7 +30,7 @@ class ParserTest {
             listOf(
                 Function(
                     proto = FunctionProto(
-                        name = "",
+                        name = "__anon_expr",
                         args = emptyList()
                     ),
                     body = BinaryExpr(
@@ -51,7 +51,7 @@ class ParserTest {
             listOf(
                 Function(
                     proto = FunctionProto(
-                        name = "",
+                        name = "__anon_expr",
                         args = emptyList()
                     ),
                     body = BinaryExpr(

@@ -119,7 +119,7 @@ class Parser(input: String) {
     private fun parseTopLevel(): Function {
         Logger.debug("Parsing top level expression")
         val expression = parseExpression()
-        val proto = FunctionProto("", listOf())
+        val proto = FunctionProto("__anon_expr", listOf())
         return Function(proto, expression)
     }
 
@@ -129,7 +129,7 @@ class Parser(input: String) {
             Lexer.identifier -> parseIdentifier()
             Lexer.number -> parseNumber()
             '(' -> parseParenExpr()
-            else -> error("Unexpected token")
+            else -> error("Unexpected token ${if (lexer.currentToken.toInt() <= 0) lexer.currentToken.toInt() else lexer.currentToken}")
         }
     }
 
@@ -147,5 +147,24 @@ class Parser(input: String) {
             }
         }
         return Program(res)
+    }
+
+    fun parseSequence() = sequence {
+        lexer.next()
+        infLoop@ while (true) {
+            when (lexer.currentToken) {
+                Lexer.eof -> break@infLoop
+                ';' -> lexer.next()
+                Lexer.def -> yield(parseDefinition() to Type.DEFINITION)
+                Lexer.extern -> yield(parseExtern() to Type.EXTERN)
+                else -> yield(parseTopLevel() to Type.TOP_LEVEL)
+            }
+        }
+    }
+
+    enum class Type {
+        DEFINITION,
+        EXTERN,
+        TOP_LEVEL
     }
 }
