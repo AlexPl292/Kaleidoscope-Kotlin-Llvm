@@ -1,0 +1,72 @@
+/**
+ * @author Alex Plate
+ */
+
+class Lexer(private val input: String) {
+    companion object {
+        val eof = (-1).toChar()
+
+        // Commands
+        val def = (-2).toChar()
+        val extern = (-3).toChar()
+
+        // Primary
+        val identifier = (-4).toChar()
+        val number = (-5).toChar()
+    }
+
+    private var pointer = -1
+    var currentToken: Char = 0.toChar()
+        private set
+    var tokenNumber: Int = 0  // Filled in if tok_identifier
+        private set
+    var tokenIdnt: String = ""  // Filled in if tok_number
+        private set
+
+    fun next() {
+        pointer++
+        if (pointer >= input.length) {
+            currentToken = eof
+            return
+        }
+        currentToken = getToken()
+    }
+
+
+    private fun getToken(): Char {
+        val len = input.length
+        // Skip any whitespace.
+        while (pointer < len && input[pointer].isWhitespace()) pointer++
+
+        if (input[pointer].isLetter()) {
+            // Identifier
+            val identifierBuilder = StringBuilder(input[pointer].toString())
+            while (pointer + 1 < len && input[pointer + 1].isLetterOrDigit()) identifierBuilder.append(input[++pointer])
+
+            return when (val identifierStr = identifierBuilder.toString()) {
+                "def" -> def
+                "extern" -> extern
+                else -> {
+                    tokenIdnt = identifierStr
+                    identifier
+                }
+            }
+        }
+
+        if (input[pointer].isDigit()) {
+            // Number
+            val numberBuilder = StringBuilder(input[pointer].toString())
+            while (pointer + 1 < len && input[pointer + 1].isDigit()) numberBuilder.append(input[++pointer])
+
+            tokenNumber = numberBuilder.toString().toInt()
+            return number
+        }
+
+        if (input[pointer] == '#') {
+            // Comment until end of line.
+            while (pointer + 1 < len && input[pointer + 1] != '\n') pointer++
+        }
+
+        return input[pointer]
+    }
+}
