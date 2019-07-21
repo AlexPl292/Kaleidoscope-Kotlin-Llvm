@@ -25,6 +25,7 @@ data class VarExpr(val name: String) : ASTBase() {
     }
 }
 
+@ExperimentalUnsignedTypes
 data class BinaryExpr(val operator: Char, val left: ASTBase, val right: ASTBase) : ASTBase() {
     override fun codegen(data: LlvmData): LLVMValueRef? {
         Logger.debug("Generate binary expression")
@@ -37,8 +38,24 @@ data class BinaryExpr(val operator: Char, val left: ASTBase, val right: ASTBase)
             '*' -> LLVMBuildMul(data.builder, leftCode, rightCode, "multmp")
             '>' -> LLVMBuildICmp(data.builder, LLVMIntSGT, leftCode, rightCode, "gtcode")
             '<' -> LLVMBuildICmp(data.builder, LLVMIntSLT, leftCode, rightCode, "ltcode")
-            else -> error("Invalid binary operator")
+            else -> {
+                val function = getFunction("binary$operator", data)
+                    ?: error("Operator not found: $operator")
+                val args = listOf(leftCode, rightCode).toCValues()
+                LLVMBuildCall(data.builder, function, args, args.size.toUInt(), "binop")
+            }
         }
+    }
+}
+
+@ExperimentalUnsignedTypes
+data class UnaryExpr(val operator: Char, val operand: ASTBase) : ASTBase() {
+    override fun codegen(data: LlvmData): LLVMValueRef? {
+        val operandV = operand.codegen(data)
+        val function = getFunction("unary$operator", data) ?: error("Unknown unary operator $operator")
+
+        val args = listOf(operandV).toCValues()
+        return LLVMBuildCall(data.builder, function, args, args.size.toUInt(), "unop")
     }
 }
 
@@ -55,8 +72,13 @@ data class CallExpr(val name: String, val args: List<ASTBase>) : ASTBase() {
     }
 }
 
-data class FunctionProto(val name: String, val args: List<String>) : Llvm {
-    @ExperimentalUnsignedTypes
+@ExperimentalUnsignedTypes
+data class FunctionProto(
+    val name: String,
+    val args: List<String>,
+    val isOperator: Boolean,
+    val precedence: UInt
+) : Llvm {
     override fun codegen(data: LlvmData): LLVMValueRef? {
         Logger.debug("Generate function proto")
         val argList = List(args.size) { LLVMInt64TypeInContext(context) }
@@ -73,14 +95,30 @@ data class FunctionProto(val name: String, val args: List<String>) : Llvm {
         }
         return function
     }
+
+    fun isBinaryOp() = isOperator && args.size == 2
+    fun isUnaryOp() = isOperator && args.size == 1
+
+    val operatorName: Char
+        get() = name.last().also { assert(isBinaryOp() || isUnaryOp()) }
+
+    enum class Type(val argNum: Int) {
+        IDENTIFIER(-1),
+        UNARY(1),
+        BINARY(2)
+    }
 }
 
+@ExperimentalUnsignedTypes
 data class Function(val proto: FunctionProto, val body: ASTBase) : Llvm {
-    @ExperimentalUnsignedTypes
     override fun codegen(data: LlvmData): LLVMValueRef? {
         Logger.debug("Generate function")
         functionProtos[proto.name] = proto
         val function = getFunction(proto.name, data) ?: proto.codegen(data)
+
+        if (proto.isBinaryOp()) {
+            binopPrecedence[proto.operatorName] = proto.precedence.toInt()
+        }
 
         val basicBlock = LLVMAppendBasicBlockInContext(context, function, "entry")
         LLVMPositionBuilderAtEnd(data.builder, basicBlock)

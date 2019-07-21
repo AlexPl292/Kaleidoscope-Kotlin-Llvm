@@ -13,7 +13,8 @@ class ParserTest {
             Function(
                 proto = FunctionProto(
                     name = "__anon_expr",
-                    args = emptyList()
+                    args = emptyList(),
+                    isOperator = false, precedence = 30u
                 ),
                 body = NumberExpr(1)
             ) to Parser.Type.TOP_LEVEL
@@ -29,7 +30,8 @@ class ParserTest {
                 Function(
                     proto = FunctionProto(
                         name = "__anon_expr",
-                        args = emptyList()
+                        args = emptyList(),
+                        isOperator = false, precedence = 30u
                     ),
                     body = BinaryExpr(
                         operator = '+',
@@ -49,7 +51,8 @@ class ParserTest {
                 Function(
                     proto = FunctionProto(
                         name = "__anon_expr",
-                        args = emptyList()
+                        args = emptyList(),
+                        isOperator = false, precedence = 30u
                     ),
                     body = BinaryExpr(
                         operator = '*',
@@ -74,7 +77,8 @@ class ParserTest {
                 Function(
                     proto = FunctionProto(
                         name = "myFun",
-                        args = listOf("x")
+                        args = listOf("x"),
+                        isOperator = false, precedence = 30u
                     ),
                     body = BinaryExpr(
                         operator = '+',
@@ -93,7 +97,8 @@ class ParserTest {
             Function(
                 proto = FunctionProto(
                     name = "myFun",
-                    args = listOf("x", "y")
+                    args = listOf("x", "y"),
+                    isOperator = false, precedence = 30u
                 ),
                 body = IfExprAst(
                     cond = BinaryExpr(
@@ -117,7 +122,8 @@ class ParserTest {
                 Function(
                     proto = FunctionProto(
                         name = "myFun",
-                        args = listOf("x", "y")
+                        args = listOf("x", "y"),
+                        isOperator = false, precedence = 30u
                     ),
                     body = ForExprAst(
                         varName = "i",
@@ -133,6 +139,52 @@ class ParserTest {
                             left = VarExpr("y"),
                             right = VarExpr("y")
                         )
+                    )
+                ) to Parser.Type.DEFINITION
+            )
+        assertEquals(expected, res)
+    }
+
+    @Test
+    internal fun `binary operator`() {
+        val res = Parser("def binary| 5 (x y) if x then 1 else if y then 1 else 0").parseSequence().toList()
+        val expected =
+            listOf(
+                Function(
+                    proto = FunctionProto(
+                        name = "binary|",
+                        args = listOf("x", "y"),
+                        isOperator = true, precedence = 5u
+                    ),
+                    body = IfExprAst(
+                        cond = VarExpr("x"),
+                        then = NumberExpr(1),
+                        elseCode = IfExprAst(
+                            cond = VarExpr("y"),
+                            then = NumberExpr(1),
+                            elseCode = NumberExpr(0)
+                        )
+                    )
+                ) to Parser.Type.DEFINITION
+            )
+        assertEquals(expected, res)
+    }
+
+    @Test
+    internal fun `unary operator`() {
+        val res = Parser("def unary! (x) if x then 1 else 0").parseSequence().toList()
+        val expected =
+            listOf(
+                Function(
+                    proto = FunctionProto(
+                        name = "unary!",
+                        args = listOf("x"),
+                        isOperator = true, precedence = 30u
+                    ),
+                    body = IfExprAst(
+                        cond = VarExpr("x"),
+                        then = NumberExpr(1),
+                        elseCode = NumberExpr(0)
                     )
                 ) to Parser.Type.DEFINITION
             )

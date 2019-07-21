@@ -1,4 +1,4 @@
-val binopPrecedence = mapOf(
+val binopPrecedence = mutableMapOf(
     '<' to 10,
     '>' to 10,
     '+' to 20,
@@ -49,6 +49,18 @@ class Parser(input: String) {
         return CallExpr(idName, args)
     }
 
+    private fun parseUnary(): ASTBase {
+        val currentToken = lexer.currentToken
+        Logger.debug("Parse unary - $currentToken")
+        if (currentToken.isTok() || currentToken == '(' || currentToken == ',') {
+            return parsePrimary()
+        }
+
+        lexer.next()
+        val operand = parseUnary()
+        return UnaryExpr(currentToken, operand)
+    }
+
     private fun parseBinOpRight(prec: Int, left: ASTBase): ASTBase {
         Logger.debug("Parse bin op right")
         var leftPart = left
@@ -62,7 +74,7 @@ class Parser(input: String) {
             val binop = lexer.currentToken
             lexer.next()
 
-            var right = parsePrimary()
+            var right = parseUnary()
 
             val nextPrec = currPrecedence
             if (currentPrec < nextPrec) {
@@ -75,16 +87,48 @@ class Parser(input: String) {
 
     private fun parseExpression(): ASTBase {
         Logger.debug("Parse expression")
-        val left = parsePrimary()
+        val left = parseUnary()
         return parseBinOpRight(0, left)
     }
 
     private fun parsePrototype(): FunctionProto {
         Logger.debug("Parsing prototype")
-        if (lexer.currentToken != Lexer.identifier) error("Identifier expected")
 
-        val fnName = lexer.tokenIdnt
-        lexer.next()
+        var precedence = 30u
+        val kind: FunctionProto.Type
+        val fnName: String
+
+        when (lexer.currentToken) {
+            Lexer.identifier -> {
+                Logger.debug("Prototype identifier")
+                fnName = lexer.tokenIdnt
+                kind = FunctionProto.Type.IDENTIFIER
+                lexer.next()
+            }
+            Lexer.unary -> {
+                Logger.debug("Prototype unary")
+                lexer.next()
+                if (lexer.currentToken.isTok()) error("Expected unary operator")
+                fnName = "unary${lexer.currentToken}"
+                kind = FunctionProto.Type.UNARY
+                lexer.next()
+            }
+            Lexer.binary -> {
+                Logger.debug("Prototype binary")
+                lexer.next()
+                if (lexer.currentToken.isTok()) error("Expected binary operator")
+                fnName = "binary${lexer.currentToken}"
+                kind = FunctionProto.Type.BINARY
+                lexer.next()
+                if (lexer.currentToken == Lexer.number) {
+                    if (lexer.tokenNumber !in 1..100) error("Precedence must be 1..100")
+                    precedence = lexer.tokenNumber.toUInt()
+                    lexer.next()
+                }
+            }
+            else -> error("Expected function name in prototype")
+        }
+
 
         if (lexer.currentToken != '(') error("( expected")
 
@@ -93,13 +137,16 @@ class Parser(input: String) {
         lexer.next()
         while (lexer.currentToken == Lexer.identifier) {
             args += lexer.tokenIdnt
+            Logger.debug("Add argument: ${lexer.tokenIdnt}")
             lexer.next()
         }
 
         if (lexer.currentToken != ')') error(") expected")
 
         lexer.next()
-        return FunctionProto(fnName, args)
+
+        if (kind != FunctionProto.Type.IDENTIFIER && kind.argNum != args.size) error("Wrong number of arguments")
+        return FunctionProto(fnName, args, kind != FunctionProto.Type.IDENTIFIER, precedence)
     }
 
     private fun parseDefinition(): Function {
@@ -120,7 +167,7 @@ class Parser(input: String) {
     private fun parseTopLevel(): Function {
         Logger.debug("Parsing top level expression")
         val expression = parseExpression()
-        val proto = FunctionProto("__anon_expr", listOf())
+        val proto = FunctionProto("__anon_expr", listOf(), false, 30u)
         return Function(proto, expression)
     }
 
@@ -178,7 +225,7 @@ class Parser(input: String) {
             Lexer.if_token -> parseIf()
             Lexer.for_token -> parseFor()
             '(' -> parseParenExpr()
-            else -> error("Unexpected token ${if (lexer.currentToken.toInt() <= 0) lexer.currentToken.toInt() else lexer.currentToken}")
+            else -> error("Unexpected token ${lexer.currentToken.toLog()}")
         }
     }
 

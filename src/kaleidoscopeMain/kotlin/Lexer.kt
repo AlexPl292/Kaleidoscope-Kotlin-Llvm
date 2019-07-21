@@ -20,6 +20,10 @@ class Lexer(private val input: String) {
         val else_token = (-8).toChar()
         val for_token = (-9).toChar()
         val in_token = (-10).toChar()
+
+        // Operators
+        val unary = (-11).toChar()
+        val binary = (-12).toChar()
     }
 
     private var pointer = -1
@@ -33,10 +37,12 @@ class Lexer(private val input: String) {
     fun next() {
         pointer++
         if (pointer >= input.length) {
+            if (pointer - input.length > 10) error("A lot ahead of file")
             currentToken = eof
             return
         }
         currentToken = getToken()
+        Logger.debug("Current token: ${currentToken.toLog()}")
     }
 
 
@@ -58,6 +64,8 @@ class Lexer(private val input: String) {
                 "else" -> else_token
                 "for" -> for_token
                 "in" -> in_token
+                "binary" -> binary
+                "unary" -> unary
                 else -> {
                     tokenIdnt = identifierStr
                     identifier
@@ -82,3 +90,7 @@ class Lexer(private val input: String) {
         return input[pointer]
     }
 }
+
+fun Char.toLog(): String = if (isTok()) (this.toInt() - Char.MAX_VALUE.toInt()).toString() else this.toString()
+
+fun Char.isTok(): Boolean = this.toInt() - Char.MAX_VALUE.toInt() / 2 > 0

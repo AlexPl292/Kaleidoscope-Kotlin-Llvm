@@ -17,6 +17,7 @@ fun linkJit() {
 }
 
 val context = LLVMContextCreate()
+@ExperimentalUnsignedTypes
 val functionProtos = mutableMapOf<String, FunctionProto>()
 
 @ExperimentalUnsignedTypes

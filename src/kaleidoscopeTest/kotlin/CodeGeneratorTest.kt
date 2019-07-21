@@ -156,6 +156,77 @@ class CodeGeneratorTest {
         assertEquals(expected, getString(data))
     }
 
+    @Test
+    internal fun `binary operator`() {
+        val data = LlvmData(false)
+        CodeGenerator(data).generate(
+            """
+            def binary| 5 (x y)
+                if x then 1 else if y then 1 else 0
+            """.trimIndent()
+        )
+        val expected = """
+            define i64 @"binary|"(i64 %x, i64 %y) {
+            entry:
+              %ifcond = icmp ne i64 %x, 0
+              br i1 %ifcond, label %then, label %else
+
+            then:                                             ; preds = %entry
+              br label %ifcont
+
+            else:                                             ; preds = %entry
+              %ifcond1 = icmp ne i64 %y, 0
+              br i1 %ifcond1, label %then2, label %else3
+
+            ifcont:                                           ; preds = %ifcont4, %then
+              %iftmp5 = phi i64 [ 1, %then ], [ %iftmp, %ifcont4 ]
+              ret i64 %iftmp5
+
+            then2:                                            ; preds = %else
+              br label %ifcont4
+
+            else3:                                            ; preds = %else
+              br label %ifcont4
+
+            ifcont4:                                          ; preds = %else3, %then2
+              %iftmp = phi i64 [ 1, %then2 ], [ 0, %else3 ]
+              br label %ifcont
+            }
+            
+            """.trimIndent()
+        assertEquals(expected, getString(data))
+    }
+
+    @Test
+    internal fun `unary operator`() {
+        val data = LlvmData(false)
+        CodeGenerator(data).generate(
+            """
+            def unary! (x)
+                if x then 1 else 0
+            """.trimIndent()
+        )
+        val expected = """
+            define i64 @"unary!"(i64 %x) {
+            entry:
+              %ifcond = icmp ne i64 %x, 0
+              br i1 %ifcond, label %then, label %else
+
+            then:                                             ; preds = %entry
+              br label %ifcont
+
+            else:                                             ; preds = %entry
+              br label %ifcont
+
+            ifcont:                                           ; preds = %else, %then
+              %iftmp = phi i64 [ 1, %then ], [ 0, %else ]
+              ret i64 %iftmp
+            }
+            
+            """.trimIndent()
+        assertEquals(expected, getString(data))
+    }
+
     private fun getString(data: LlvmData): String? {
         val str = LLVMPrintModuleToString(data.module)?.toKString() ?: ""
         return str.substring(str.indexOf("\n\n") + 2)

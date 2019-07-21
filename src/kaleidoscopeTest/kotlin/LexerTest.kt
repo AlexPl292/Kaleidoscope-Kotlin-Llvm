@@ -1,9 +1,11 @@
+import Lexer.Companion.binary
 import Lexer.Companion.def
 import Lexer.Companion.else_token
 import Lexer.Companion.for_token
 import Lexer.Companion.if_token
 import Lexer.Companion.in_token
 import Lexer.Companion.then_token
+import Lexer.Companion.unary
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -78,6 +80,25 @@ class LexerTest {
         assertEquals(expected, res)
     }
 
+    @Test
+    internal fun binaryOperator() {
+        val expected = tokens(
+            def, binary, "|", "5", "(", "x", "y", ")", if_token, "x", then_token, "1", else_token, if_token, "y",
+            then_token, "1", else_token, "0"
+        )
+        val res = parse("def binary| 5 (x y) if x then 1 else if y then 1 else 0")
+        assertEquals(expected, res)
+    }
+
+    @Test
+    internal fun unaryOperator() {
+        val expected = tokens(
+            def, unary, "!", "(", "x", ")", if_token, "x", then_token, "1", else_token, "0"
+        )
+        val res = parse("def unary! (x) if x then 1 else 0")
+        assertEquals(expected, res)
+    }
+
     private fun tokens(vararg vals: Any): List<Pair<Char, String>> {
         return vals.map {
             when (it) {
@@ -87,7 +108,7 @@ class LexerTest {
                     it[0].isLetter() -> Lexer.identifier to it
                     else -> it[0] to ""
                 }
-                else -> error("Cannot parse")
+                else -> error("Cannot parse $it")
             }
         }
     }
