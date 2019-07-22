@@ -156,7 +156,7 @@ data class Function(val proto: FunctionProto, val body: ASTBase) : Llvm {
 data class IfExprAst(val cond: ASTBase, val then: ASTBase, val elseCode: ASTBase) : ASTBase() {
     @ExperimentalUnsignedTypes
     override fun codegen(data: LlvmData): LLVMValueRef? {
-        val condition = cond.codegen(data)
+        val condition = LLVMBuildIntCast2(data.builder, cond.codegen(data), LLVMInt64TypeInContext(context), 0, "casttmp")
         val condRes = LLVMBuildICmp(
             data.builder,
             LLVMIntNE,
@@ -231,7 +231,7 @@ data class ForExprAst(
         val nextVar = LLVMBuildAdd(data.builder, phi, step, "nextvar")
 
         // End condition
-        val end = end.codegen(data)
+        val end = LLVMBuildIntCast2(data.builder, end.codegen(data), LLVMInt64TypeInContext(context), 0, "casttmp")
         val endCondition = LLVMBuildICmp(
             data.builder,
             LLVMIntNE,

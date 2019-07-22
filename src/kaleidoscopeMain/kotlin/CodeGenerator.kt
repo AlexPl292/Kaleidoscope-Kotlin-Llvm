@@ -38,6 +38,7 @@ class LlvmData(val optimization: Boolean = true, val runTopLevel: Boolean = fals
     val builder = LLVMCreateBuilder()
     val namedValues = mutableMapOf<String, LLVMValueRef?>()
     val fpm: LLVMPassManagerRef?
+    var lastExecutionResult: Int = -1
 
     init {
         fpm = LLVMCreateFunctionPassManagerForModule(module)
@@ -91,6 +92,7 @@ class CodeGenerator(private var data: LlvmData) {
                 LLVMFindFunction(jit.executionEngine, name, myFunction.ptr)
 
                 val res = LLVMRunFunction(jit.executionEngine, myFunction.value, 0u, args.ptr)
+                data.lastExecutionResult = LLVMGenericValueToInt(res, 0).toInt()
                 println("Result: " + LLVMGenericValueToInt(res, 0))
             }
             jit.removeModule(moduleInJit)

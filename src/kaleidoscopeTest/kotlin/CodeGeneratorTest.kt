@@ -123,6 +123,37 @@ class CodeGeneratorTest {
     }
 
     @Test
+    internal fun `if condition with less`() {
+        val data = LlvmData(false)
+        CodeGenerator(data).generate(
+            """
+                def baz(x) if (x < 2) then 1 else 0;
+                """.trimIndent()
+        )
+        val expected = """
+            define i64 @baz(i64 %x) {
+            entry:
+              %ltcode = icmp slt i64 %x, 2
+              %casttmp = zext i1 %ltcode to i64
+              %ifcond = icmp ne i64 %casttmp, 0
+              br i1 %ifcond, label %then, label %else
+
+            then:                                             ; preds = %entry
+              br label %ifcont
+
+            else:                                             ; preds = %entry
+              br label %ifcont
+
+            ifcont:                                           ; preds = %else, %then
+              %iftmp = phi i64 [ 1, %then ], [ 0, %else ]
+              ret i64 %iftmp
+            }
+
+        """.trimIndent()
+        assertEquals(expected, getString(data))
+    }
+
+    @Test
     internal fun `for loop`() {
         val data = LlvmData(false)
         CodeGenerator(data).generate(
@@ -145,7 +176,8 @@ class CodeGeneratorTest {
              %calltmp = call i64 @putchard(i64 42)
              %nextvar = add i64 %i, 1
              %ltcode = icmp slt i64 %i, %n
-             %loopcond = icmp ne i1 %ltcode, i64 0
+             %casttmp = zext i1 %ltcode to i64
+             %loopcond = icmp ne i64 %casttmp, 0
              br i1 %loopcond, label %loop, label %afterloop
 
            afterloop:                                        ; preds = %loop
@@ -231,5 +263,4 @@ class CodeGeneratorTest {
         val str = LLVMPrintModuleToString(data.module)?.toKString() ?: ""
         return str.substring(str.indexOf("\n\n") + 2)
     }
-
 }
