@@ -33,12 +33,13 @@ fun getFunction(name: String, data: LlvmData): LLVMValueRef? {
     return functionProtos[name]?.codegen(data)
 }
 
+var lastExecutionResult: Int = -1
+
 class LlvmData(val optimization: Boolean = true, val runTopLevel: Boolean = false) {
     val module = LLVMModuleCreateWithNameInContext("Kaleidoscope-kotlin", context)
     val builder = LLVMCreateBuilder()
     val namedValues = mutableMapOf<String, LLVMValueRef?>()
     val fpm: LLVMPassManagerRef?
-    var lastExecutionResult: Int = -1
 
     init {
         fpm = LLVMCreateFunctionPassManagerForModule(module)
@@ -85,16 +86,16 @@ class CodeGenerator(private var data: LlvmData) {
             val moduleInJit = data.module
             data = LlvmData(data.optimization, data.runTopLevel)
 
-            memScoped {
+            lastExecutionResult = memScoped {
                 val name = "__anon_expr"
                 val myFunction = alloc<LLVMValueRefVar>()
                 val args = alloc<LLVMGenericValueRefVar>()
                 LLVMFindFunction(jit.executionEngine, name, myFunction.ptr)
 
                 val res = LLVMRunFunction(jit.executionEngine, myFunction.value, 0u, args.ptr)
-                data.lastExecutionResult = LLVMGenericValueToInt(res, 0).toInt()
-                println("Result: " + LLVMGenericValueToInt(res, 0))
+                LLVMGenericValueToInt(res, 0).toInt()
             }
+            println("Result : $lastExecutionResult")
             jit.removeModule(moduleInJit)
         }
     }

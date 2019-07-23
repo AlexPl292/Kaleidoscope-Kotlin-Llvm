@@ -229,16 +229,14 @@ class Parser(input: String) {
         }
     }
 
-    fun parseSequence() = sequence {
+    fun parseSequence() = generateSequence {
         lexer.next()
-        infLoop@ while (true) {
-            when (lexer.currentToken) {
-                Lexer.eof -> break@infLoop
-                ';' -> lexer.next()
-                Lexer.def -> yield(parseDefinition() to Type.DEFINITION)
-                Lexer.extern -> yield(parseExtern() to Type.EXTERN)
-                else -> yield(parseTopLevel() to Type.TOP_LEVEL)
-            }
+        while (lexer.currentToken == ';') lexer.next()
+        when (lexer.currentToken) {
+            Lexer.eof -> null
+            Lexer.def -> parseDefinition() to Type.DEFINITION
+            Lexer.extern -> parseExtern() to Type.EXTERN
+            else -> parseTopLevel() to Type.TOP_LEVEL
         }
     }
 
