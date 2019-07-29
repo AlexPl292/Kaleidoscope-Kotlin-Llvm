@@ -27,7 +27,16 @@ kotlin {
         val llvm by main.cinterops.creating
 
         binaries {
-            executable {
+            executable("ch2") {
+                entryPoint = "ch2.main"
+                runTask?.standardInput = System.`in`
+            }
+            executable("ch3") {
+                entryPoint = "ch3.main"
+                runTask?.standardInput = System.`in`
+            }
+            executable("ch4") {
+                entryPoint = "ch4.main"
                 runTask?.standardInput = System.`in`
             }
         }

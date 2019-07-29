@@ -5,7 +5,7 @@ import llvm.*
  * @author Alex Plate
  */
 @ExperimentalUnsignedTypes
-class KaleidoscopeJIT {
+class KaleidoscopeJIT(context: LLVMContextRef?) {
     var executionEngine: LLVMExecutionEngineRef?
     private val jitModule = LLVMModuleCreateWithNameInContext("jit", context)
 
@@ -31,5 +31,11 @@ class KaleidoscopeJIT {
             val res = LLVMRemoveModule(executionEngine, module, outModule.ptr, errorPtr.ptr)
             if (res != 0) error("Error in removing module from jit ${errorPtr.value?.toKString()}")
         }
+    }
+
+    fun findSymbol(name: String): LLVMValueRef? = memScoped {
+        val myFunction = alloc<LLVMValueRefVar>()
+        LLVMFindFunction(executionEngine, name, myFunction.ptr)
+        myFunction.value
     }
 }
