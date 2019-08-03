@@ -18,7 +18,7 @@ object InputModel {
     }
 }
 
-fun Int.isAscii(): Boolean = this - Char.MAX_VALUE.toInt() / 2 < 0
+fun Int.isAscii(): Boolean = this in 0..255
 fun Int.toLog() = if (this.isAscii()) this.toChar() else (this - Char.MAX_VALUE.toInt()).toString()
 
 const val EOF = '\u001a'
