@@ -47,6 +47,10 @@ kotlin {
                 entryPoint = "ch6.main"
                 runTask?.standardInput = System.`in`
             }
+            executable("ch7") {
+                entryPoint = "ch7.main"
+                runTask?.standardInput = System.`in`
+            }
         }
     }
 }

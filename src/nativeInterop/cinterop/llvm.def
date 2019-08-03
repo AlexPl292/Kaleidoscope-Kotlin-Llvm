@@ -1,7 +1,8 @@
 headers = llvm-c/Core.h \
           llvm-c/ExecutionEngine.h \
           llvm-c/Analysis.h \
-          llvm-c/Transforms/Scalar.h
+          llvm-c/Transforms/Scalar.h \
+          llvm-c/Transforms/Utils.h
 headerFilter = llvm-c/**
 
 compilerOpts = -I/usr/local/opt/llvm/include
